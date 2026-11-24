@@ -8,7 +8,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use std::collections::HashSet;
+use std::collections::BTreeSet;
 use std::future::Future;
 use std::ops::ControlFlow;
 use std::time::Duration;
@@ -334,7 +334,7 @@ impl InvocationStatus {
     #[inline]
     pub fn get_response_sinks_mut(
         &mut self,
-    ) -> Option<&mut HashSet<ServiceInvocationResponseSink>> {
+    ) -> Option<&mut BTreeSet<ServiceInvocationResponseSink>> {
         match self {
             InvocationStatus::Scheduled(metadata) => Some(&mut metadata.metadata.response_sinks),
             InvocationStatus::Inboxed(metadata) => Some(&mut metadata.metadata.response_sinks),
@@ -346,7 +346,7 @@ impl InvocationStatus {
     }
 
     #[inline]
-    pub fn get_response_sinks(&self) -> Option<&HashSet<ServiceInvocationResponseSink>> {
+    pub fn get_response_sinks(&self) -> Option<&BTreeSet<ServiceInvocationResponseSink>> {
         match self {
             InvocationStatus::Scheduled(metadata) => Some(&metadata.metadata.response_sinks),
             InvocationStatus::Inboxed(metadata) => Some(&metadata.metadata.response_sinks),
@@ -524,7 +524,7 @@ pub struct PreFlightInvocationJournal {
 /// This is similar to [ServiceInvocation].
 #[derive(Debug, Clone, PartialEq)]
 pub struct PreFlightInvocationMetadata {
-    pub response_sinks: HashSet<ServiceInvocationResponseSink>,
+    pub response_sinks: BTreeSet<ServiceInvocationResponseSink>,
     pub timestamps: StatusTimestamps,
     pub vqueue_id: Option<VQueueId>,
     pub limit_key: LimitKey<ReString>,
@@ -667,7 +667,9 @@ pub struct InFlightInvocationMetadata {
     pub created_using_restate_version: RestateVersion,
     pub journal_metadata: JournalMetadata,
     pub pinned_deployment: Option<PinnedDeployment>,
-    pub response_sinks: HashSet<ServiceInvocationResponseSink>,
+    /// Ordered, so that every replica enqueues the responses into the outbox in the same order:
+    /// replicas truncate the outbox by sequence number.
+    pub response_sinks: BTreeSet<ServiceInvocationResponseSink>,
     pub timestamps: StatusTimestamps,
     pub source: Source,
     /// For invocations that were originally scheduled, retains the time when the request was originally scheduled to execute
@@ -1004,7 +1006,7 @@ mod test_util {
                 vqueue_id: Some(VQueueId::custom(partition_key, "MyKey")),
                 limit_key: LimitKey::None,
                 created_using_restate_version: RestateVersion::current(),
-                response_sinks: HashSet::new(),
+                response_sinks: BTreeSet::new(),
                 timestamps: StatusTimestamps::mock(),
                 source: Source::Ingress(PartitionProcessorRpcRequestId::default()),
                 execution_time: None,
@@ -1032,7 +1034,7 @@ mod test_util {
                 vqueue_id: None,
                 limit_key: LimitKey::None,
                 created_using_restate_version: RestateVersion::current(),
-                response_sinks: HashSet::new(),
+                response_sinks: BTreeSet::new(),
                 timestamps: StatusTimestamps::mock(),
                 source: Source::Ingress(PartitionProcessorRpcRequestId::default()),
                 execution_time: None,
@@ -1064,7 +1066,7 @@ mod test_util {
                 created_using_restate_version: RestateVersion::current(),
                 journal_metadata: JournalMetadata::initialize(ServiceInvocationSpanContext::empty()),
                 pinned_deployment: None,
-                response_sinks: HashSet::new(),
+                response_sinks: BTreeSet::new(),
                 timestamps: StatusTimestamps::mock(),
                 source: Source::Ingress(PartitionProcessorRpcRequestId::default()),
                 execution_time: None,
@@ -1089,7 +1091,7 @@ mod test_util {
                 created_using_restate_version: RestateVersion::current(),
                 journal_metadata: JournalMetadata::initialize(ServiceInvocationSpanContext::empty()),
                 pinned_deployment: None,
-                response_sinks: HashSet::new(),
+                response_sinks: BTreeSet::new(),
                 timestamps: StatusTimestamps::mock(),
                 source: Source::Ingress(PartitionProcessorRpcRequestId::default()),
                 execution_time: None,
